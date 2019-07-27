@@ -69,6 +69,10 @@ namespace AESEncrypt
                     if (redir > 10) throw new InvalidOperationException("重定向次数太多了");
                 }
                 foreach (Cookie c in nres.Cookies) ccc.Add(c);
+
+                HttpWebResponse check = Requests.Get("http://portal.chd.edu.cn/index.portal?.pn=p167", Cookieslst: ccc, AllowRedirect: true, TimeOut: time);
+
+                if ((int)check.StatusCode != 200) throw new InvalidOperationException("登录失败!");
                 HttpWebResponse grade = Requests.Get("http://bkjw.chd.edu.cn/eams/teach/grade/course/person!historyCourseGrade.action?projectType=MAJOR", Cookieslst: ccc, AllowRedirect: true);
 
 

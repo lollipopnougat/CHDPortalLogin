@@ -80,8 +80,8 @@ namespace AESEncrypt
             req.Accept = "*/*";
             //req.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
             req.ContentType = "application/x-www-form-urlencoded";
-            req.ServicePoint.Expect100Continue = false;
-            req.ServicePoint.UseNagleAlgorithm = false;//禁止Nagle算法加快载入速度
+            //req.ServicePoint.Expect100Continue = false;
+            //req.ServicePoint.UseNagleAlgorithm = false;//禁止Nagle算法加快载入速度
             //if (!string.IsNullOrEmpty(options.XHRParams)) { req.AllowWriteStreamBuffering = true; } else { request.AllowWriteStreamBuffering = false; }; //禁止缓冲加快载入速度
             req.Headers.Add(HttpRequestHeader.AcceptEncoding, "gzip,deflate");//定义gzip压缩页面支持
             //req.Connection = "keep-alive";
