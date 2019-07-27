@@ -7,6 +7,9 @@ using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Web;
+using HtmlAgilityPack;
+using System.Data;
+using System.Collections;
 
 namespace AESEncrypt
 {
@@ -50,32 +53,129 @@ namespace AESEncrypt
             data += "&execution=" + execution;
             data += "&_eventId=" + _eventId;
             data += "&rmShown=" + rmShown;
+            tag:
             CookieCollection ccc = new CookieCollection();
-            foreach (Cookie c in res.Cookies)
+            foreach (Cookie c in res.Cookies) ccc.Add(c);
+            try
             {
-                ccc.Add(c);
-            }
-            HttpWebResponse nres = Requests.Post("http://ids.chd.edu.cn/authserver/login?service=http%3A%2F%2Fportal.chd.edu.cn%2F", Data: data, Cookieslst: ccc);
-            //Console.WriteLine($"状态码: {(int)nres.StatusCode} \n状态值: {nres.StatusCode}");
-            while ((int)nres.StatusCode == 302)
-            {
-                foreach(Cookie c in nres.Cookies)
+                HttpWebResponse nres = Requests.Post("http://ids.chd.edu.cn/authserver/login?service=http%3A%2F%2Fportal.chd.edu.cn%2F", Data: data, Cookieslst: ccc);
+                //Console.WriteLine($"状态码: {(int)nres.StatusCode} \n状态值: {nres.StatusCode}");
+                int redir = 0;
+                while ((int)nres.StatusCode == 302)
                 {
-                    ccc.Add(c);
+                    foreach (Cookie c in nres.Cookies) ccc.Add(c);
+                    nres = Requests.Post(nres.Headers["Location"], Data: data, Cookieslst: ccc);
+                    redir++;
+                    if (redir > 10) throw new InvalidOperationException("重定向次数太多了");
                 }
-                nres = Requests.Post(nres.Headers["Location"], Data: data, Cookieslst: ccc);
-            }
-            foreach (Cookie c in nres.Cookies)
-            {
-                ccc.Add(c);
-            }
-            HttpWebResponse grade = Requests.Get("http://bkjw.chd.edu.cn/eams/teach/grade/course/person!historyCourseGrade.action?projectType=MAJOR", Cookieslst: ccc,AllowRedirect: true);
+                foreach (Cookie c in nres.Cookies) ccc.Add(c);
+                HttpWebResponse grade = Requests.Get("http://bkjw.chd.edu.cn/eams/teach/grade/course/person!historyCourseGrade.action?projectType=MAJOR", Cookieslst: ccc, AllowRedirect: true);
 
-            //string fff = new StreamReader(grade.GetResponseStream()).ReadToEnd();
-            //Console.WriteLine(fff);
-            Console.WriteLine(Requests.GetResponseText(grade));
+
+                string result = Requests.GetResponseText(grade);
+                HtmlDocument document = new HtmlDocument();
+                document.LoadHtml(result);
+                var courselst = document.DocumentNode.SelectNodes("//tbody[@id]/tr");
+                DataTable dt = new DataTable();
+                Dictionary<string, string> tableHead1 = new Dictionary<string, string>
+            {
+                { "学年学期", "System.String" },
+                { "课程代码", "System.String" },
+                { "课程序号", "System.String" },
+                { "课程名称", "System.String" },
+                { "课程情况", "System.String" },
+                { "课程类别", "System.String" },
+                { "学分", "System.Int32" },
+                { "期中成绩", "System.String" },
+                { "期末成绩", "System.String" },
+                { "平时成绩", "System.String" },
+                { "总评成绩", "System.String" },
+                { "实验成绩", "System.String" },
+                { "最终成绩", "System.String" },
+                { "绩点", "System.Double" }
+            };
+                foreach (var item in tableHead1) dt.Columns.Add(item.Key, Type.GetType(item.Value));
+
+
+                foreach (HtmlNode node in courselst)
+                {
+                    var course = node.SelectNodes("./td");
+                    ArrayList al = new ArrayList();
+                    object[] oal = new object[14];
+                    oal[0] = course[0].InnerText;
+                    oal[1] = course[1].InnerText;
+                    oal[2] = course[2].InnerText;
+                    oal[3] = FormatCourse(course[3].InnerText);
+                    if (course[3].SelectNodes("./span") != null)
+                    {
+                        oal[4] = course[3].SelectNodes("./span")[0].InnerText.Replace("(", "").Replace(")", "");
+                    }
+                    else oal[4] = "正常";
+                    oal[5] = course[4].InnerText;
+                    oal[6] = Convert.ToDouble(FormatCourse(course[5].InnerText));
+                    for (int i = 7; i < 12; i++)
+                    {
+                        oal[i] = FormatCourse(course[i - 1].InnerText);
+                    }
+                    oal[13] = Convert.ToDouble(FormatCourse(course[12].InnerText));
+                    foreach(var ttt in oal)
+                    {
+                        Console.WriteLine(ttt);
+                    }
+                    /*
+                    for (int i = 0; i < course.Count; i++)
+                    {
+                        //Console.WriteLine($"course[{i}].innerText = { course[i].InnerText}");
+                        //Console.WriteLine($"course[{i}].innerHtml = { course[i].InnerHtml}");
+
+                        if (i == 3)
+                        {
+                            al.Add(FormatCourse(course[i].InnerText));
+                            //Console.WriteLine($"course[{i}].innerText = { course[i].InnerText}");
+                            if (course[i].ChildNodes.Count > 1) al.Add(course[i].SelectSingleNode("./span").InnerText.Replace("(", "").Replace(")", ""));
+                            else al.Add("正常");
+                        }
+                        else if (i > 4)
+                        {
+                            if (FormatCourse(course[i].InnerText) == null || FormatCourse(course[i].InnerText) == "") al.Add("N/A");
+                            if (i == 5 || i == 12)
+                            {
+                                if (i == 5) al.Add(Convert.ToDouble(FormatCourse(course[i].InnerText)));
+                                var l = Convert.ToDouble(FormatCourse(course[i].InnerText));
+                                Console.WriteLine($"course[{i}].D = { l }");
+                            }
+                            else al.Add(FormatCourse(course[i].InnerText));
+                            string e = FormatCourse(course[i].InnerText);
+                            Console.WriteLine($"C course[{i}].innerText = { e }");
+
+                        }
+                        //else if (i ==)
+                        else {
+                            al.Add(course[i].InnerHtml);
+                            
+                        }
+                    }
+                    for (int i = 0; i < 14; i++) Console.WriteLine($"al[{i}] = {al[i]}");
+                    //object[] oal = new object[14];
+                    for (int i = 0; i < 14; i++) oal[i] = al[i];*/
+
+                    /*foreach (HtmlNode n2 in course)
+                    {
+                        Console.WriteLine(n2.InnerHtml);
+                    }*/
+                    dt.Rows.Add(oal);
+                }
+            }
+            catch (InvalidOperationException er)
+            {
+                Console.WriteLine(er.ToString());
+                Console.WriteLine("按任意键重启...");
+                Console.ReadKey();
+                goto tag;
+            }
+            //Console.WriteLine(result);
             Console.ReadKey();
-            
+
         }
         public static string GetRandomString(int Len)
         {
@@ -90,11 +190,14 @@ namespace AESEncrypt
                 //retStr += $aes_chars.charAt(Math.floor(Math.random() * aes_chars_len));
             }
             return Result;
-
+        }
+        public static string FormatCourse(string str)
+        {
+            return str.Replace(" ", "").Replace("\r\n", "").Replace("\n", "").Replace("\t", "");
         }
     }
 
-    
-    
+
+
 
 }

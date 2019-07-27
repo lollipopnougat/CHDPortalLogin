@@ -30,15 +30,8 @@ namespace AESEncrypt
             req.ContentType = "application/x-www-form-urlencoded";
             req.Headers.Add(HttpRequestHeader.AcceptEncoding, "identity");
 
-            
             req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36";
-            if (Cookieslst != null)
-            {
-                foreach(Cookie co in Cookieslst)
-                {
-                    req.CookieContainer.Add(co);
-                }
-            }
+            if (Cookieslst != null) foreach(Cookie co in Cookieslst) req.CookieContainer.Add(co);
             if (Headers != null) req.Headers = Headers;
             if (Proxy != null)
             {
@@ -95,13 +88,7 @@ namespace AESEncrypt
             req.KeepAlive = true;
             req.CookieContainer = new CookieContainer();
             req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36";
-            if (Cookieslst != null)
-            {
-                foreach (Cookie co in Cookieslst)
-                {
-                    req.CookieContainer.Add(co);
-                }
-            }
+            if (Cookieslst != null) foreach (Cookie co in Cookieslst) req.CookieContainer.Add(co);
             if (Data != null)
             {
                 //req.ContentType = "application/json";
